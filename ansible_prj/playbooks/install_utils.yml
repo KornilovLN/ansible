@@ -1,0 +1,140 @@
+---
+- name: Install essential software
+  hosts: u_server24
+  become: yes
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    # Подготовка к установке Docker
+    - name: Install Docker prerequisites
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - gnupg
+          - lsb-release
+        state: present
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+
+    # Установка системных утилит
+    - name: Check and install system utilities
+      apt:
+        name: "{{ item }}"
+        state: present
+      register: install_result
+      with_items:
+        - htop
+        - mc
+        - vim
+        - net-tools
+        - curl
+        - wget
+        - git
+        - tree
+        - ncdu
+        - iotop
+        - nmap
+        - tcpdump
+        - iftop
+        - zip
+        - unzip
+        - screen
+        - tmux
+        - watch
+        - rsync
+        # Уже установленные утилиты при установке системы
+        #- diff
+        #- tee        
+        #- cut
+        #- tr
+        #- sort
+        #- uniq
+        #- find               
+
+
+    - name: Install text processing tools
+      apt:
+        name:
+        - grep
+        - sed
+        - gawk
+        - coreutils
+        - jq
+        - bc
+        - perl
+        - bsdmainutils
+        state: present
+
+    # Установка Docker
+    - name: Install docker tools
+      apt:
+        name:
+        - docker-ce
+        - docker-ce-cli
+        - containerd.io
+        - docker-compose
+        #- docker-volume-persist
+        state: present        
+
+    # Установка Weave
+    - name: Download Weave from GitHub
+      get_url:
+        url: https://github.com/weaveworks/weave/releases/download/v2.8.1/weave
+        dest: /usr/local/bin/weave
+        mode: '0755'
+
+    - name: Install Weave
+      command: /usr/local/bin/weave setup
+      args:
+        creates: /etc/weave.conf
+
+    # Установка Python и пакетов в venv
+    - name: Install python
+      apt:
+        name:
+        - python3
+        - python3-pip
+        - python3-dev
+        state: present
+
+    - name: Get Python version
+      command: python3 --version
+      register: python_version
+
+    - name: Install python3-venv package
+      apt:
+        name: python3-venv
+        state: present
+
+    - name: Create virtual environment
+      command: python3 -m venv /opt/venv
+
+    - name: Install Python packages in venv
+      pip:
+        name:
+          - numpy
+          - pandas
+          - flask
+          - sqlalchemy
+          - requests
+          - pytest
+          - python-dotenv
+        state: present
+        virtualenv: /opt/venv
+   
+    # Вывод результатов установки
+    - name: Show installation results
+      debug:
+        msg: "{{ item.item }} is {{ 'already installed' if not item.changed else 'newly installed' }}"
+      loop: "{{ install_result.results }}" 

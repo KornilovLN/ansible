@@ -1,0 +1,11 @@
+---
+- name: Read hosts file
+  hosts: u_server24
+  tasks:
+    - name: Display content of /etc/hosts
+      command: cat /etc/hosts
+      register: hosts_content
+
+    - name: Show the content
+      debug:
+        var: hosts_content.stdout_lines

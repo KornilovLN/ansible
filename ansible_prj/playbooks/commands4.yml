@@ -1,0 +1,74 @@
+---
+- name: Execute multiple commands
+  hosts: u_server24
+  vars:
+    saver: ~/res.txt
+    separator: "\n----------------------------------------\n"
+  tasks:
+    - name: Remove old output file
+      file:
+        path: "{{ saver }}"
+        state: absent
+
+    - name: Check memory usage
+      shell: |
+        echo "[{{ inventory_hostname }}] [Check memory usage]" | tee -a {{ saver }}
+        free -h | tee -a {{ saver }}
+        echo "{{ separator }}" >> {{ saver }}
+      register: memory_usage
+    - debug:
+        var: memory_usage.stdout_lines
+
+    - name: List processes
+      shell: |
+        echo "[{{ inventory_hostname }}] [List processes]" | tee -a {{ saver }}
+        ps aux | tee -a {{ saver }}
+        echo "{{ separator }}" >> {{ saver }}
+      register: processes
+    - debug:
+        var: processes.stdout_lines
+
+    - name: Show system info
+      shell: |
+        echo "[{{ inventory_hostname }}] [Show system info]" | tee -a {{ saver }}
+        uname -a | tee -a {{ saver }} 
+        echo "{{ separator }}" >> {{ saver }}
+      register: system_info
+    - debug:
+        var: system_info.stdout_lines
+
+    - name: List root directory
+      shell: |
+        echo "[{{ inventory_hostname }}] [List root directory]" | tee -a {{ saver }}
+        ls / | tee -a {{ saver }} 
+        echo "{{ separator }}" >> {{ saver }}
+      register: root_dir
+    - debug:
+        var: root_dir.stdout_lines
+
+    - name: List home directory
+      shell: |
+        echo "[{{ inventory_hostname }}] [List home directory]" | tee -a {{ saver }}
+        ls -la ~/ | tee -a {{ saver }} 
+        echo "{{ separator }}" >> {{ saver }}
+      register: home_dir
+    - debug:
+        var: home_dir.stdout_lines
+
+    - name: Count SSH keys
+      shell: |
+        echo "[{{ inventory_hostname }}] [Count SSH keys]" | tee -a {{ saver }}        
+        wc -l ~/.ssh/authorized_keys | tee -a {{ saver }} 
+        echo "{{ separator }}" >> {{ saver }}
+      register: ssh_keys
+    - debug:
+        var: ssh_keys.stdout_lines
+
+    - name: List SSH directory
+      shell: |
+        echo "[{{ inventory_hostname }}] [List SSH directory]" | tee -a {{ saver }}
+        ls -la ~/.ssh/ | tee -a {{ saver }} 
+        echo "{{ separator }}" >> {{ saver }}
+      register: ssh_dir
+    - debug:
+        var: ssh_dir.stdout_lines

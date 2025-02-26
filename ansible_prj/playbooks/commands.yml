@@ -1,0 +1,52 @@
+---
+- name: Execute multiple commands
+  hosts: u_server24
+  tasks:
+    - name: List root directory
+      shell: ls /
+      register: root_dir
+    - debug:
+        var: root_dir.stdout_lines
+
+    - name: List home directory
+      shell: ls -la ~/
+      register: home_dir
+    - debug:
+        var: home_dir.stdout_lines
+
+    - name: Free capacity disk check
+      shell: df -h
+      register: root_dir
+    - debug:
+        var: root_dir.stdout_lines
+
+    - name: Check memory usage
+      shell: free -h
+      register: memory_usage
+    - debug:
+        var: memory_usage.stdout_lines
+
+    - name: List processes
+      shell: ps aux
+      register: processes
+    - debug:
+        var: processes.stdout_lines
+
+    - name: Show system info
+      shell: uname -a
+      register: system_info
+    - debug:
+        var: system_info.stdout_lines   
+
+    - name: Count SSH keys
+      shell: wc -l ~/.ssh/authorized_keys
+      register: ssh_keys
+    - debug:
+        var: ssh_keys.stdout_lines
+
+    - name: List SSH directory
+      shell: ls -la ~/.ssh/
+      register: ssh_dir
+    - debug:
+        var: ssh_dir.stdout_lines
+

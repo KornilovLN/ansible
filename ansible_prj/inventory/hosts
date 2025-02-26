@@ -1,0 +1,25 @@
+[office]
+192.168.196.21 ansible_host=gitlab.office.ivl.ua
+192.168.196.112 ansible_host=registry.master.cns
+192.168.196.112 ansible_host=brama.master.cns
+192.168.196.112 ansible_host=pypi.master.cns
+192.168.196.112 ansible_host=vavilon
+192.168.196.112 ansible_host=brama.master.cns.atom
+192.168.196.112 ansible_host=brama.znpp.cns.atom
+
+[vpn_servers]
+vpn.vm.develop ansible_ssh_host=192.168.88.101 ansible_user=starmark ansible_ssh_pass="!18leon28"
+
+vpn.vm.ubuntu18 ansible_ssh_host=192.168.88.102 ansible_user=starmark ansible_ssh_pass="!18leon28"
+
+vpn.vm.VM3 ansible_ssh_host=192.168.88.103 ansible_user=starmark ansible_ssh_pass="!18leon28"    
+vpn.vm.NPPTest ansible_ssh_host=192.168.88.104 ansible_user=starmark ansible_ssh_pass="!18leon28"
+
+srv_sunpp ansible_ssh_host=192.168.88.105 ansible_user=starmark ansible_ssh_pass="!18leon28"
+
+uDesktop24 ansible_ssh_host=192.168.88.106 ansible_user=starmark ansible_ssh_pass="!18leon28"
+u_server24 ansible_ssh_host=192.168.88.107 ansible_user=starmark ansible_ssh_pass="!18leon28"
+
+
+[mongodb_servers]
+vpn.vm.NPPTest ansible_ssh_host=192.168.88.104 ansible_user=starmark ansible_ssh_pass="!18leon28"
