@@ -1,0 +1,13 @@
+ansible_prj/
+├── inventory
+│   └── hosts
+├── md
+│   └── admin-userver.md
+└── playbooks
+    ├── commands4.yml
+    ├── commands.yml
+    ├── install_utils.yml
+    ├── mongodb_setup.yml
+    └── test.yml
+
+3 directories, 7 files

@@ -1,3 +1,17 @@
+#[proxmox_home]
+#vm-debian ansible_ssh_host=192.168.0.243 ansible_user=starmark ansible_ssh_pass="!18leon28"
+#userver ansible_ssh_host=192.168.0.166 ansible_user=starmark ansible_ssh_pass="!18leon28"
+# или так:
+[proxmox_home]
+vm-debian ansible_host=192.168.0.243
+userver ansible_host=192.168.0.166
+
+[proxmox_home:vars]
+ansible_user=starmark
+ansible_ssh_pass="!18leon28"
+# Явно укажите интерпретатор Python для всей группы
+ansible_python_interpreter=/usr/bin/python3
+
 [office]
 192.168.196.21 ansible_host=gitlab.office.ivl.ua
 192.168.196.112 ansible_host=registry.master.cns

@@ -1,0 +1,269 @@
+---
+- name: Install essential software and Docker
+  hosts: userver
+  become: yes
+  vars:
+    docker_ce_version: "5:27.1.1-1~ubuntu.24.04~noble"
+    weave_version: "2.8.1"
+
+  tasks:
+    # 1. Обновление системы
+    - name: Update apt cache and upgrade system
+      apt:
+        update_cache: yes
+        upgrade: dist
+        cache_valid_time: 3600
+
+    # 2. Подготовка к установке Docker (безопасный метод)
+    - name: Install Docker prerequisites
+      apt:
+        name:
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        state: present
+
+    - name: Create Docker keyring directory
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Download Docker GPG key
+      get_url:
+        url: "https://download.docker.com/linux/ubuntu/gpg"
+        dest: "/etc/apt/keyrings/docker.asc"
+        mode: '0644'
+      register: docker_key
+      until: docker_key is succeeded
+      retries: 3
+      delay: 5
+
+
+    # 1. УДАЛИТЬ старый, возможно, битый репозиторий
+    - name: REMOVE existing Docker repo file
+      file:
+        path: /etc/apt/sources.list.d/download_docker_com_linux_ubuntu.list
+        state: absent
+
+    # 2. ДОБАВИТЬ репозиторий с явным указанием jammy (22.04 LTS) как источника для noble
+    - name: ADD Docker repository for Noble (using jammy base)
+      apt_repository:
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu jammy stable"
+        state: present
+        filename: docker
+        update_cache: yes
+
+    # 3. ПРОВЕРИТЬ, что пакеты появились
+    - name: VERIFY docker-ce package availability
+      command: apt-cache policy docker-ce
+      register: docker_ce_check
+
+    - name: SHOW docker-ce availability result
+      debug:
+        var: docker_ce_check.stdout_lines
+
+    # 4. УСТАНОВИТЬ Docker
+    - name: Install Docker Engine
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: no  # Кэш уже обновлён выше
+      notify:
+        - Enable docker service
+        - Add user to docker group      
+
+    # ... остальные задачи плейбука ...
+
+    # 3. Установка системных утилит (оптимизированный список)
+    - name: Install system utilities (core)
+      apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        # Основные утилиты мониторинга и работы
+        - htop
+        - mc
+        - neovim          # Современная замена vim
+        - net-tools       # ifconfig и другие
+        - git
+        - tree
+        - ncdu            # Дисковое пространство
+        - tcpdump
+        - zip
+        - unzip
+        - tmux            # Менеджер терминалов (лучше screen)
+        - rsync
+        
+        # Сетевые и диагностические утилиты
+        - curl
+        - wget
+        - iotop           # Мониторинг дисковых операций
+        - nmap            # Сканирование сети
+        - iftop           # Мониторинг сетевого трафика
+        - bmon            # Альтернатива iftop
+        - dstat           # Комплексный мониторинг
+        
+        # Дополнительные полезные утилиты
+        - screen          # На случай совместимости со старыми скриптами
+        - watch
+        - hdparm          # Тестирование дисков
+        - smartmontools   # Мониторинг здоровья дисков
+        - lshw            # Информация об оборудовании
+        - ncurses-term    # Расширенная поддержка терминалов        
+      register: core_utils_install
+
+    - name: Install text processing tools
+      apt:
+        name:
+          - jq            # Обработка JSON (уже в другом блоке, но можно тут)
+          - yq
+          - bc
+          - moreutils
+          - ripgrep
+          - fd-find
+        state: present
+
+    # 4. Установка Docker и зависимостей
+    - name: Install Docker Engine
+      apt:
+        name:
+          #- docker-ce={{ docker_ce_version }}  # Пока закомментируем, ставим latest
+          - docker-ce
+          #- docker-ce-cli={{ docker_ce_version }}  # Пока закомментируем, ставим latest
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: yes
+      notify:
+        - Enable docker service
+        - Add user to docker group
+
+    # 5. Установка Weave Net с проверкой
+    - name: Check if Weave already exists
+      stat:
+        path: /usr/local/bin/weave
+      register: weave_exists
+
+    - name: Download Weave Net
+      get_url:
+        url: "https://github.com/weaveworks/weave/releases/download/v{{ weave_version }}/weave"
+        dest: /usr/local/bin/weave
+        mode: '0755'
+        force: no  # Не перезаписывать если уже существует
+      when: not weave_exists.stat.exists
+
+    - name: Verify Weave installation
+      command: /usr/local/bin/weave version
+      register: weave_version_check
+      changed_when: false
+      ignore_errors: yes
+
+    # 6. Настройка Python окружения
+    - name: Ensure Python3 and venv are installed
+      apt:
+        name:
+          - python3
+          - python3-pip
+          - python3-venv
+          - python3-dev
+          - build-essential
+          - libssl-dev
+          - libffi-dev
+        state: present
+
+    # ... предыдущие задачи ...
+
+    - name: Create virtual environment if not exists
+      file:
+        path: /opt/venv
+        state: directory
+      changed_when: false
+
+    # 1. СНАЧАЛА создаем файл requirements.txt
+    - name: Create requirements file
+      copy:
+        dest: /tmp/requirements.txt
+        content: |
+          numpy>=1.24.0
+          pandas>=2.0.0
+          flask>=3.0.0
+          sqlalchemy>=2.0.0
+          requests>=2.31.0
+          pytest>=7.4.0
+          python-dotenv>=1.0.0
+          docker>=6.1.0
+          ansible>=8.0.0
+        mode: '0644'
+
+    # 2. ПОТОМ создаем/обновляем venv, используя этот файл
+    - name: Create/update Python virtual environment
+      pip:
+        requirements: /tmp/requirements.txt
+        virtualenv: /opt/venv
+        virtualenv_command: python3 -m venv
+      environment:
+        VIRTUAL_ENV: /opt/venv
+
+    # ... следующие задачи ...
+
+    # 7. Установка инструментов мониторинга (опционально)
+    - name: Install monitoring tools
+      apt:
+        name:
+          - prometheus-node-exporter
+          - htop
+          - iotop
+          - iftop
+          - nethogs
+        state: present
+      when: false  # Отключено по умолчанию, поменяйте на true если нужно
+
+    # 8. Финальная проверка и вывод
+    - name: Display Docker version
+      command: docker --version
+      register: docker_version
+      changed_when: false
+
+    - name: Display Python packages in venv
+      command: /opt/venv/bin/pip list
+      register: pip_list
+      changed_when: false
+
+    - name: Show installation summary
+      debug:
+        msg: |
+          === УСТАНОВКА ЗАВЕРШЕНА ===
+          Docker: {{ docker_version.stdout }}
+          Weave: {{ weave_version_check.stdout_lines[0] if weave_version_check is succeeded else 'Не установлен' }}
+          Python venv: /opt/venv ({{ pip_list.stdout_lines | length }} пакетов)
+          Core utils: {{ core_utils_install.results | selectattr('changed') | list | length }} новых установок
+
+  handlers:
+    - name: Enable docker service
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+        daemon_reload: yes
+
+    - name: Add user to docker group
+      user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: yes
+      notify:
+        - Reload user session
+
+    - name: Reload user session
+      # Для применения изменений группы docker без перезагрузки
+      shell: "newgrp docker"
+      changed_when: false
